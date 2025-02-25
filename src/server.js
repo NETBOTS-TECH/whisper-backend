@@ -5,9 +5,10 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import OpenAI from 'openai';
+import 'dotenv/config'
 
 const openai = new OpenAI({
-  apiKey: "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",
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -94,7 +95,7 @@ io.on('connection', (socket) => {
     socket.emit('transcription', { text: transcription.text });
     fs.unlinkSync(filePath);
   });
-  
+
 });
 
 server.listen(3000, () => {
