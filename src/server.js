@@ -65,35 +65,35 @@ io.on('connection', (socket) => {
 
   socket.on('audio-chunk', async (buffer) => {
     try {
-      const tempFilePath = join(__dirname, `temp-${Date.now()}-${socket.id}.webm`);
-      fs.writeFileSync(tempFilePath, Buffer.from(buffer));
-      const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tempFilePath),
-        model: 'whisper-1',
-        language: 'en'
-      });
+      // const tempFilePath = join(__dirname, `temp-${Date.now()}-${socket.id}.webm`);
+      // fs.writeFileSync(tempFilePath, Buffer.from(buffer));
+      // const transcription = await openai.audio.transcriptions.create({
+      //   file: fs.createReadStream(tempFilePath),
+      //   model: 'whisper-1',
+      //   language: 'en'
+      // });
 
-      socket.data.transcript = transcription.text + " ";
+     let transcriptionText = 'You have gotten virus, Saar!'
+      socket.data.transcript = transcriptionText;
       console.log(socket.data.transcript)
-      socket.emit('transcription', { text: transcription.text });
-      fs.unlinkSync(tempFilePath);
+      socket.emit('transcription', { text: socket.data.transcript });
+      // fs.unlinkSync(tempFilePath);
 
       if (!socket.data.startTime) socket.data.startTime = Date.now();
       const elapsedSeconds = (Date.now() - socket.data.startTime) / 1000;
 
-      if (elapsedSeconds >= 5 && !socket.data.isResponding) {
+      if (elapsedSeconds >= 2 && !socket.data.isResponding) {
         socket.data.isResponding = true;
         let finalBotResponse = "";
 
         if (socket.data.transcript.toLowerCase().includes("win")) {
-          const spamLines = [
-            "You won a prize!",
-            "Free trip!",
-            "Claim your reward now!",
-            "Limited time offer!",
-            "Congratulations, you've been selected!"
-          ];
-          const randomSpam = spamLines[Math.floor(Math.random() * spamLines.length)];
+          // const spamLines = [
+          //   "You won a prize!",
+          //   "Free trip!",
+          //   "Claim your reward now!",
+          //   "Limited time offer!",
+          //   "Congratulations, you've been selected!"
+          // ];
           finalBotResponse = `What did I win?`;
         } else {
           const chatResponse = await openai.chat.completions.create({
@@ -102,7 +102,7 @@ io.on('connection', (socket) => {
               {
                 role: 'user',
                 content: "So the following response is from a spammer, waste his time by being annoying, the responses should directly start just direct answers: "
-                  + transcription.text
+                  + socket.data.transcript
               }
             ],
             temperature: 0.5,
@@ -128,20 +128,20 @@ io.on('connection', (socket) => {
           voice: "ash",
           input: finalBotResponse,
         });
-        
+
         const ttsDir = join(__dirname, 'tts_responses');
         if (!fs.existsSync(ttsDir)) fs.mkdirSync(ttsDir);
-        
+
         const ttsFileName = `tts_${Date.now()}_${socket.id}.mp3`;
         const ttsFilePath = join(ttsDir, ttsFileName);
         const arrayBuffer = await mp3.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         fs.writeFileSync(ttsFilePath, buffer);
-        
+
         // Notify the client with the URL for playback over HTTP.
         const ttsUrl = `/tts/${ttsFileName}`;
-        socket.emit('model-response-audio', { audioUrl: ttsUrl });
-        
+        socket.emit('model-response-audio', buffer);
+
         socket.data.startTime = Date.now();
         socket.data.isResponding = false;
       }
