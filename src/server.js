@@ -65,19 +65,18 @@ io.on('connection', (socket) => {
 
   socket.on('audio-chunk', async (buffer) => {
     try {
-      // const tempFilePath = join(__dirname, `temp-${Date.now()}-${socket.id}.webm`);
-      // fs.writeFileSync(tempFilePath, Buffer.from(buffer));
-      // const transcription = await openai.audio.transcriptions.create({
-      //   file: fs.createReadStream(tempFilePath),
-      //   model: 'whisper-1',
-      //   language: 'en'
-      // });
+      const tempFilePath = join(__dirname, `temp-${Date.now()}-${socket.id}.webm`);
+      fs.writeFileSync(tempFilePath, Buffer.from(buffer));
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(tempFilePath),
+        model: 'whisper-1',
+        language: 'en'
+      });
 
-     let transcriptionText = 'You have gotten virus, Saar!'
-      socket.data.transcript = transcriptionText;
+      socket.data.transcript = transcription.text ;
       console.log(socket.data.transcript)
-      socket.emit('transcription', { text: socket.data.transcript });
-      // fs.unlinkSync(tempFilePath);
+      socket.emit('transcription', { text: transcription.text  });
+      fs.unlinkSync(tempFilePath);
 
       if (!socket.data.startTime) socket.data.startTime = Date.now();
       const elapsedSeconds = (Date.now() - socket.data.startTime) / 1000;
@@ -102,7 +101,7 @@ io.on('connection', (socket) => {
               {
                 role: 'user',
                 content: "So the following response is from a spammer, waste his time by being annoying, the responses should directly start just direct answers: "
-                  + socket.data.transcript
+                  + transcription.text 
               }
             ],
             temperature: 0.5,
