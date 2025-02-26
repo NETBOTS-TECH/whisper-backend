@@ -1,17 +1,13 @@
-// Full backend code with immediate transcription and emission for each chunk.
 import express from 'express';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import path, { dirname, join } from 'node:path';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -21,14 +17,25 @@ const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
+app.use('/tts', express.static(join(__dirname, 'tts_responses')));
+
+// Serve TTS files via HTTP
+const ttsDir = join(__dirname, 'tts_responses');
+if (!fs.existsSync(ttsDir)) fs.mkdirSync(ttsDir);
+app.use('/tts', express.static(ttsDir));
+
 const connectedClients = new Set();
 
 io.on('connection', (socket) => {
   connectedClients.add(socket.id);
-  console.log('New client connected:', socket.id);
+  console.log('Device connected:', socket.id)
+  socket.data.transcript = "";
+  socket.data.startTime = null;
+  socket.data.isResponding = false;
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log('Device disconnected:', socket.id)
+
     connectedClients.delete(socket.id);
   });
 
@@ -57,19 +64,89 @@ io.on('connection', (socket) => {
   });
 
   socket.on('audio-chunk', async (buffer) => {
-    const filePath = join(__dirname, `temp-${Date.now()}-${socket.id}.webm`);
-    fs.writeFileSync(filePath, Buffer.from(buffer));
     try {
+      const tempFilePath = join(__dirname, `temp-${Date.now()}-${socket.id}.webm`);
+      fs.writeFileSync(tempFilePath, Buffer.from(buffer));
       const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(filePath),
+        file: fs.createReadStream(tempFilePath),
         model: 'whisper-1',
+        language: 'en'
       });
-      console.log(`Transcription from ${socket.id}: ${transcription.text}`);
+
+      socket.data.transcript = transcription.text + " ";
+      console.log(socket.data.transcript)
       socket.emit('transcription', { text: transcription.text });
-    } catch (err) {
-      console.error('Transcription error:', err);
-    } finally {
-      fs.unlinkSync(filePath);
+      fs.unlinkSync(tempFilePath);
+
+      if (!socket.data.startTime) socket.data.startTime = Date.now();
+      const elapsedSeconds = (Date.now() - socket.data.startTime) / 1000;
+
+      if (elapsedSeconds >= 5 && !socket.data.isResponding) {
+        socket.data.isResponding = true;
+        let finalBotResponse = "";
+
+        if (socket.data.transcript.toLowerCase().includes("win")) {
+          const spamLines = [
+            "You won a prize!",
+            "Free trip!",
+            "Claim your reward now!",
+            "Limited time offer!",
+            "Congratulations, you've been selected!"
+          ];
+          const randomSpam = spamLines[Math.floor(Math.random() * spamLines.length)];
+          finalBotResponse = `What did I win?`;
+        } else {
+          const chatResponse = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+              {
+                role: 'user',
+                content: "So the following response is from a spammer, waste his time by being annoying, the responses should directly start just direct answers: "
+                  + transcription.text
+              }
+            ],
+            temperature: 0.5,
+            max_tokens: 100,
+          });
+          finalBotResponse = chatResponse.choices[0].message.content;
+          const funLines = [
+            "Are you selling me a yacht?",
+            "Is that the best you got?",
+            "Tell me more about your secret scheme!",
+            "I must say, your offer is almost as shiny as my code.",
+            "Do you have a spare ticket to Mars?"
+          ];
+          finalBotResponse += " " + funLines[Math.floor(Math.random() * funLines.length)];
+        }
+
+        console.log(finalBotResponse)
+
+        socket.emit('model-response', { text: finalBotResponse });
+
+        const mp3 = await openai.audio.speech.create({
+          model: "tts-1",
+          voice: "ash",
+          input: finalBotResponse,
+        });
+        
+        const ttsDir = join(__dirname, 'tts_responses');
+        if (!fs.existsSync(ttsDir)) fs.mkdirSync(ttsDir);
+        
+        const ttsFileName = `tts_${Date.now()}_${socket.id}.mp3`;
+        const ttsFilePath = join(ttsDir, ttsFileName);
+        const arrayBuffer = await mp3.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        fs.writeFileSync(ttsFilePath, buffer);
+        
+        // Notify the client with the URL for playback over HTTP.
+        const ttsUrl = `/tts/${ttsFileName}`;
+        socket.emit('model-response-audio', { audioUrl: ttsUrl });
+        
+        socket.data.startTime = Date.now();
+        socket.data.isResponding = false;
+      }
+    } catch (error) {
+      console.error("Error processing audio chunk:", error);
     }
   });
 });
