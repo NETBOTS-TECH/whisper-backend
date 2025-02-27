@@ -7,7 +7,8 @@ WhisperWize is an AI-powered backend that helps detect and deter spam/bot calls 
 The application follows a modular architecture, organized into distinct directories for controllers, routes, socket handling, and TTS responses. It utilizes Node.js with Express.js for the backend framework and Socket.io for real-time WebSocket communication.
 
 **2.1. Directory Structure**
-<
+
+    ```
 netbots-tech-whisper-backend/
 ├── README.md
 ├── index.html
@@ -21,7 +22,8 @@ netbots-tech-whisper-backend/
 │   └── index.js
 └── tts_responses/
 
->
+    ```
+
 * `README.md`: Provides an overview of the application, installation instructions, and usage guidelines.
 * `index.html`: A basic HTML page for testing WebSocket communication.
 * `index.js`: The main application file, handling server setup, socket connections, and OpenAI API interactions.
