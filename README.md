@@ -9,15 +9,19 @@ The application follows a modular architecture, organized into distinct director
 **2.1. Directory Structure**
 
 
-netbots-tech-whisper-backend/
-README.md
-index.html
-index.js
-package.json
-controllers/twilioController.js
-routes/twilioRoutes.js
-socket/index.js
-tts_responses/
+*Directory structure:
+*└── netbots-tech-whisper-backend/
+*    ├── README.md
+*    ├── index.html
+*    ├── index.js
+*    ├── package.json
+*    ├── controllers/
+*    │   └── twilioController.js
+*    ├── routes/
+*    │   └── twilioRoutes.js
+*    ├── socket/
+*    │   └── index.js
+*    └── tts_responses/
 
 * `README.md`: Provides an overview of the application, installation instructions, and usage guidelines.
 * `index.html`: A basic HTML page for testing WebSocket communication.
