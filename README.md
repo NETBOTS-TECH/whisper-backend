@@ -1,14 +1,13 @@
 # WhisperWize - AI-Powered Spam Call Detection: Application 
 
 **1. Introduction**
-
 WhisperWize is an AI-powered backend that helps detect and deter spam/bot calls using OpenAI's **Whisper** (for speech-to-text transcription) and **GPT-4** (for generating responses). The app listens to incoming calls, transcribes audio, analyzes it for spam, and responds in an engaging way to waste the spammer's time.
-**2. Application Architecture**
 
+**2. Application Architecture**
 The application follows a modular architecture, organized into distinct directories for controllers, routes, socket handling, and TTS responses. It utilizes Node.js with Express.js for the backend framework and Socket.io for real-time WebSocket communication.
 
 **2.1. Directory Structure**
-
+<
 netbots-tech-whisper-backend/
 ├── README.md
 ├── index.html
@@ -22,6 +21,7 @@ netbots-tech-whisper-backend/
 │   └── index.js
 └── tts_responses/
 
+>
 * `README.md`: Provides an overview of the application, installation instructions, and usage guidelines.
 * `index.html`: A basic HTML page for testing WebSocket communication.
 * `index.js`: The main application file, handling server setup, socket connections, and OpenAI API interactions.
