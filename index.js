@@ -70,32 +70,28 @@ io.on('connection', (socket) => {
     try {
       const tempFilePath = join(__dirname, `temp-${Date.now()}-${socket.id}.webm`);
       fs.writeFileSync(tempFilePath, Buffer.from(buffer));
+  
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(tempFilePath),
         model: 'whisper-1',
         language: 'en'
       });
-
-      socket.data.transcript = transcription.text;
-      console.log(socket.data.transcript)
-      socket.emit('transcription', { text: transcription.text });
+  
       fs.unlinkSync(tempFilePath);
-
+  
+      console.log(`Transcription from ${socket.id}: ${transcription.text}`);
+      
+      // Send transcription to the receiver
+      socket.broadcast.emit('transcription', { text: transcription.text });
+  
       if (!socket.data.startTime) socket.data.startTime = Date.now();
       const elapsedSeconds = (Date.now() - socket.data.startTime) / 1000;
-
+  
       if (elapsedSeconds >= 2 && !socket.data.isResponding) {
         socket.data.isResponding = true;
         let finalBotResponse = "";
-
-        if (socket.data.transcript.toLowerCase().includes("win")) {
-          // const spamLines = [
-          //   "You won a prize!",
-          //   "Free trip!",
-          //   "Claim your reward now!",
-          //   "Limited time offer!",
-          //   "Congratulations, you've been selected!"
-          // ];
+  
+        if (transcription.text.toLowerCase().includes("win")) {
           finalBotResponse = `What did I win?`;
         } else {
           const chatResponse = await openai.chat.completions.create({
@@ -110,6 +106,7 @@ io.on('connection', (socket) => {
             temperature: 0.5,
             max_tokens: 100,
           });
+  
           finalBotResponse = chatResponse.choices[0].message.content;
           const funLines = [
             "Are you selling me a yacht?",
@@ -120,30 +117,28 @@ io.on('connection', (socket) => {
           ];
           finalBotResponse += " " + funLines[Math.floor(Math.random() * funLines.length)];
         }
-
-        console.log(finalBotResponse)
-
-        socket.emit('model-response', { text: finalBotResponse });
-
+  
+        console.log(`Bot Response: ${finalBotResponse}`);
+  
+        // Send the text response to the receiver
+        socket.broadcast.emit('bot-text-response', { text: finalBotResponse });
+  
+        // Generate TTS audio
         const mp3 = await openai.audio.speech.create({
           model: "tts-1",
           voice: "ash",
           input: finalBotResponse,
         });
-
-        const ttsDir = join(__dirname, 'tts_responses');
-        if (!fs.existsSync(ttsDir)) fs.mkdirSync(ttsDir);
-
+  
         const ttsFileName = `tts_${Date.now()}_${socket.id}.mp3`;
         const ttsFilePath = join(ttsDir, ttsFileName);
         const arrayBuffer = await mp3.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         fs.writeFileSync(ttsFilePath, buffer);
-
-        // Notify the client with the URL for playback over HTTP.
-        const ttsUrl = `/tts/${ttsFileName}`;
+  
+        // Send the TTS audio **only to the caller**
         socket.emit('model-response-audio', buffer);
-
+  
         socket.data.startTime = Date.now();
         socket.data.isResponding = false;
       }
@@ -151,8 +146,14 @@ io.on('connection', (socket) => {
       console.error("Error processing audio chunk:", error);
     }
   });
+  
+
+
+
+  
 });
 
-server.listen(process.env.PORT || 3000, () => {
-  console.log('Server listening on http://localhost:3000');
+const PORT =  process.env.PORT || 3001
+server.listen(PORT  ,() => {
+  console.log(`Server listening on http://localhost:${PORT}`);
 });
