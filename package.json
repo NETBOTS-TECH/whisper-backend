@@ -4,8 +4,8 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "start": "node",
+    "dev": "nodemon"
   },
   "dependencies": {
     "@google-cloud/speech": "^6.7.0",
