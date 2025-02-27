@@ -4,9 +4,9 @@
   "type": "module",
    "main": "index.js",
   "description": "",
-  "scripts": {
-    "start": "node",
-    "dev": "nodemon"
+"scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "@google-cloud/speech": "^6.7.0",
